@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     public sealed class StatComponentSnapshot<TStat, TComponent>
     {
@@ -8,10 +8,7 @@ namespace StatSystem
         public float Value { get; }
         public IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> Sources { get; }
 
-        internal StatComponentSnapshot(
-            TComponent component,
-            float value,
-            IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> sources)
+        internal StatComponentSnapshot(TComponent component, float value, IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> sources)
         {
             Component = component;
             Value = value;

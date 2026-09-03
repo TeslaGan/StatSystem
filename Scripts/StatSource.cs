@@ -1,6 +1,6 @@
 using System;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     public abstract class StatSource<TStat, TComponent> : IStatSource<TStat, TComponent>
     {

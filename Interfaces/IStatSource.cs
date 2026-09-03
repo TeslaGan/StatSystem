@@ -1,6 +1,6 @@
 using System;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     public interface IStatSource<TStat, TComponent>
     {

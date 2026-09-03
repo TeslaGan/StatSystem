@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     internal sealed class StatComponentRecord<TStat, TComponent>
     {
@@ -11,9 +11,7 @@ namespace StatSystem
         private readonly HashSet<IStatSource<TStat, TComponent>> _multiplySources =
             new(ReferenceEqualityComparer<IStatSource<TStat, TComponent>>.Instance);
 
-        public bool IsEmpty =>
-            _percentSources.Count == 0 &&
-            _multiplySources.Count == 0;
+        public bool IsEmpty => _percentSources.Count == 0 && _multiplySources.Count == 0;
 
         public bool Add(IStatSource<TStat, TComponent> source)
         {
@@ -51,9 +49,7 @@ namespace StatSystem
 
         public StatComponentSnapshot<TStat, TComponent> CreateSnapshot(TComponent component)
         {
-            var sources = new List<StatSourceSnapshot<TStat, TComponent>>(
-                _percentSources.Count + _multiplySources.Count);
-
+            var sources = new List<StatSourceSnapshot<TStat, TComponent>>(_percentSources.Count + _multiplySources.Count);
             float percent = 1f;
             float multiply = 1f;
 
@@ -71,10 +67,7 @@ namespace StatSystem
                 sources.Add(new StatSourceSnapshot<TStat, TComponent>(source, value));
             }
 
-            return new StatComponentSnapshot<TStat, TComponent>(
-                component,
-                percent * multiply,
-                sources);
+            return new StatComponentSnapshot<TStat, TComponent>(component, percent * multiply, sources);
         }
 
         public void UnsubscribeAll(Action handler)

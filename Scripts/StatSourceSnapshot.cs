@@ -1,4 +1,4 @@
-namespace StatSystem
+namespace Core.StatSystem
 {
     public readonly struct StatSourceSnapshot<TStat, TComponent>
     {
@@ -8,9 +8,7 @@ namespace StatSystem
         public StatModifierKind Kind { get; }
         public float Value { get; }
 
-        internal StatSourceSnapshot(
-            IStatSource<TStat, TComponent> source,
-            float value)
+        internal StatSourceSnapshot(IStatSource<TStat, TComponent> source, float value)
         {
             Source = source;
             Stat = source.Stat;

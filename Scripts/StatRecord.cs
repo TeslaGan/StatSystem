@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     internal sealed class StatRecord<TStat, TComponent>
     {
@@ -9,13 +9,10 @@ namespace StatSystem
             new(ReferenceEqualityComparer<IStatSource<TStat, TComponent>>.Instance);
 
         private readonly Dictionary<TComponent, StatComponentRecord<TStat, TComponent>> _components = new();
-
         private float _cachedValue;
         private bool _isDirty = true;
 
-        public bool IsEmpty =>
-            _addSources.Count == 0 &&
-            _components.Count == 0;
+        public bool IsEmpty => _addSources.Count == 0 && _components.Count == 0;
 
         public float Value
         {
@@ -36,21 +33,13 @@ namespace StatSystem
             if(source.Kind == StatModifierKind.Add)
                 return _addSources.Add(source);
 
-            if(_components.TryGetValue(
-                source.Component,
-                out StatComponentRecord<TStat, TComponent> component) == false)
+            if(_components.TryGetValue(source.Component, out StatComponentRecord<TStat, TComponent> component) == false)
             {
                 component = new StatComponentRecord<TStat, TComponent>();
                 _components.Add(source.Component, component);
             }
 
-            if(component.Add(source))
-                return true;
-
-            if(component.IsEmpty)
-                _components.Remove(source.Component);
-
-            return false;
+            return component.Add(source);
         }
 
         public bool Remove(IStatSource<TStat, TComponent> source)
@@ -58,12 +47,8 @@ namespace StatSystem
             if(source.Kind == StatModifierKind.Add)
                 return _addSources.Remove(source);
 
-            if(_components.TryGetValue(
-                source.Component,
-                out StatComponentRecord<TStat, TComponent> component) == false)
-            {
+            if(_components.TryGetValue(source.Component, out StatComponentRecord<TStat, TComponent> component) == false)
                 return false;
-            }
 
             if(component.Remove(source) == false)
                 return false;
@@ -83,7 +68,6 @@ namespace StatSystem
         {
             var addSources = new List<StatSourceSnapshot<TStat, TComponent>>(_addSources.Count);
             var components = new List<StatComponentSnapshot<TStat, TComponent>>(_components.Count);
-
             float baseValue = 0f;
 
             foreach(IStatSource<TStat, TComponent> source in _addSources)
@@ -102,12 +86,10 @@ namespace StatSystem
                 value *= component.Value;
             }
 
-            return new StatBreakdown<TStat, TComponent>(
-                stat,
-                baseValue,
-                value,
-                addSources,
-                components);
+            _cachedValue = value;
+            _isDirty = false;
+
+            return new StatBreakdown<TStat, TComponent>(stat, baseValue, value, addSources, components);
         }
 
         public void UnsubscribeAll(Action handler)

@@ -1,14 +1,29 @@
-# StatSystem
+# Core.StatSystem
 
-Простая generic-система статов для C# без зависимости от Unity.
+Маленькая generic-система статов для C# и Unity-проектов.
 
-`StatContainer<TStat, TComponent>` хранит runtime-набор статов сущности. Стат появляется автоматически, когда в контейнер добавляется первый `IStatSource` для этого `TStat`, и исчезает после удаления последнего source.
+## StatContainer
 
-Core не валидирует, какие значения `TStat` и `TComponent` допустимы в конкретной игре. Если проекту нужна такая проверка, она делается на внешней границе (например, через Registry).
+`StatContainer<TStat, TComponent>` — основной runtime-контейнер системы.
 
-## Математика
+Статы заранее регистрировать не нужно. Стат существует, пока в контейнере есть хотя бы один source для его `TStat`.
 
-Все источники имеют один из трёх типов:
+```csharp
+var stats = new StatContainer<CharacterStat, CharacterStatComponent>();
+```
+
+Если стат отсутствует:
+
+```csharp
+stats.GetValue(CharacterStat.Attack);        // 0
+stats.TryGetValue(CharacterStat.Attack, _);  // false
+```
+
+## Sources
+
+Любое влияние на стат представлено через `IStatSource<TStat, TComponent>`.
+
+В системе есть три типа модификаторов:
 
 ```text
 Add
@@ -16,228 +31,159 @@ Percent
 Multiply
 ```
 
-`Add` формирует абсолютную базу стата:
+`Add` формирует базу:
 
 ```text
 Base = Sum(Add)
 ```
 
-`Percent` и `Multiply` группируются по `TComponent`:
+`Percent` и `Multiply` группируются по компоненту:
 
 ```text
 Component = (1 + Sum(Percent)) * Product(Multiply)
 ```
 
-Итог:
+Финальное значение:
 
 ```text
 Value = Base * Product(Components)
 ```
 
-Поэтому при `Base == 0` любые процентные и multiplicative-компоненты всё равно дают `0`.
-
-Компонент — это математическая группа влияния, а не gameplay-система. Один и тот же компонент может влиять на разные статы независимо.
-
-## Базовый пример
-
-Определим ключи статов и компонентов обычными enum:
-
-```csharp
-public enum CharacterStat
-{
-    Attack,
-    Agility,
-    MoveSpeed
-}
-
-public enum CharacterStatComponent
-{
-    Equipment,
-    Curse,
-    Burger
-}
-```
-
-Создадим контейнер:
-
-```csharp
-using var stats =
-    new StatContainer<CharacterStat, CharacterStatComponent>();
-```
-
-Статы отдельно регистрировать не нужно. Чтобы добавить `Attack = 10`, достаточно добавить source:
-
-```csharp
-var baseAttack = new ConstantStatSource(
-    "Character",
-    CharacterStat.Attack,
-    StatModifierKind.Add,
-    10f);
-
-stats.AddSource(baseAttack);
-```
-
-Теперь:
-
-```csharp
-stats.GetValue(CharacterStat.Attack); // 10
-```
-
-Если стат отсутствует:
-
-```csharp
-stats.GetValue(CharacterStat.Agility);       // 0
-stats.TryGetValue(CharacterStat.Agility, _); // false
-```
-
-После появления первого source:
-
-```csharp
-var baseAgility = new ConstantStatSource(
-    "Character",
-    CharacterStat.Agility,
-    StatModifierKind.Add,
-    10f);
-
-stats.AddSource(baseAgility);
-
-stats.GetValue(CharacterStat.Agility);       // 10
-stats.TryGetValue(CharacterStat.Agility, _); // true
-```
-
-## Компоненты
-
-Например меч даёт `Attack +5`, мастерство усиливает Equipment на `20%`, а проклятое кольцо даёт отдельный `Curse -30%`:
-
-```csharp
-stats.AddSource(new ConstantStatSource(
-    "Longsword",
-    CharacterStat.Attack,
-    StatModifierKind.Add,
-    5f));
-
-stats.AddSource(new ConstantStatSource(
-    "Sword Mastery",
-    CharacterStat.Attack,
-    StatModifierKind.Percent,
-    0.2f,
-    CharacterStatComponent.Equipment));
-
-stats.AddSource(new ConstantStatSource(
-    "Cursed Ring",
-    CharacterStat.Attack,
-    StatModifierKind.Percent,
-    -0.3f,
-    CharacterStatComponent.Curse));
-```
-
-Расчёт:
+Например:
 
 ```text
-Base      = 10 + 5 = 15
-Equipment = 1 + 0.2 = 1.2
-Curse     = 1 - 0.3 = 0.7
+Character     +10 Attack
+Longsword      +5 Attack
+Sword Mastery +20% [Equipment]
+Cursed Ring   -30% [Curse]
 
-Attack = 15 * 1.2 * 0.7 = 12.6
+Attack = (10 + 5) * 1.2 * 0.7 = 12.6
 ```
 
-## Один компонент влияет на несколько статов
+Простейший constant source можно сделать так:
 
-`Burger` может усиливать атаку и одновременно снижать ловкость:
+```csharp
+public sealed class ConstantStatSource : StatSource<CharacterStat, CharacterStatComponent>
+{
+    public override CharacterStat Stat { get; }
+    public override CharacterStatComponent Component { get; }
+    public override StatModifierKind Kind { get; }
+    public override float Value { get; }
+
+    public ConstantStatSource(
+        CharacterStat stat,
+        StatModifierKind kind,
+        float value,
+        CharacterStatComponent component = default)
+    {
+        Stat = stat;
+        Kind = kind;
+        Value = value;
+        Component = component;
+    }
+}
+```
+
+Добавление source автоматически создаёт stat record:
 
 ```csharp
 stats.AddSource(new ConstantStatSource(
-    "Hamburger",
     CharacterStat.Attack,
-    StatModifierKind.Multiply,
-    3f,
-    CharacterStatComponent.Burger));
-
-stats.AddSource(new ConstantStatSource(
-    "Burger Sauce",
-    CharacterStat.Attack,
-    StatModifierKind.Percent,
-    0.5f,
-    CharacterStatComponent.Burger));
-
-stats.AddSource(new ConstantStatSource(
-    "Hamburger",
-    CharacterStat.Agility,
-    StatModifierKind.Multiply,
-    0.8f,
-    CharacterStatComponent.Burger));
-
-stats.AddSource(new ConstantStatSource(
-    "Burger Grease",
-    CharacterStat.Agility,
-    StatModifierKind.Percent,
-    -0.1f,
-    CharacterStatComponent.Burger));
+    StatModifierKind.Add,
+    10f));
 ```
 
-Для атаки:
+Удаление:
+
+```csharp
+stats.RemoveSource(source);
+```
+
+Когда удалён последний source этого стата, stat record тоже исчезает.
+
+`Stat`, `Component` и `Kind` source должны оставаться стабильными, пока source зарегистрирован. Меняться может `Value`. Если значение изменилось, source вызывает `Invalidate()`.
+
+## Components
+
+Компонент — математическая группа, а не gameplay-система.
+
+Один компонент может независимо влиять на разные статы. Например `Burger` одновременно усиливает Attack и уменьшает Agility:
 
 ```text
+Attack:
+    Hamburger    x3   [Burger]
+    Burger Sauce +50% [Burger]
+
 Burger = (1 + 0.5) * 3 = 4.5
 ```
 
-Для ловкости:
-
 ```text
+Agility:
+    Hamburger     x0.8 [Burger]
+    Burger Grease -10% [Burger]
+
 Burger = (1 - 0.1) * 0.8 = 0.72
 ```
 
-Это один `CharacterStatComponent.Burger`, но разные records для `Attack` и `Agility`.
+## Dynamic sources
 
-## Динамические sources
-
-`Value` может вычисляться динамически. Если источник потенциально изменил значение, он вызывает `Invalidate()` из базового `StatSource`.
-
-Контейнер в текущей реализации инвалидирует кэш всех статов, но пересчитывает их лениво только при следующем чтении.
-
-## Зависимость одного стата от другого
-
-Core не содержит отдельного dependency graph. Это можно выразить обычным source:
+`Value` может вычисляться динамически, в том числе через другой stat:
 
 ```csharp
 public override float Value =>
     _stats.GetValue(CharacterStat.Agility) * 0.1f;
 ```
 
-Например `MoveSpeed = 2 + Agility * 0.1`.
+Таким source можно выразить, например:
 
-Если зависимости образуют цикл, контейнер выбросит `InvalidOperationException` вместо ухода в бесконечную рекурсию.
+```text
+MoveSpeed = 2 + Agility * 0.1
+```
 
-## Просмотр влияний
+При `Invalidated` контейнер помечает все stat records dirty и пересчитывает нужное значение лениво при следующем чтении.
 
-`TryGetBreakdown` возвращает snapshot расчёта со всеми sources, base и компонентами:
+Циклическая зависимость обнаруживается во время evaluation и приводит к `InvalidOperationException` вместо бесконечной рекурсии.
+
+## Breakdown
+
+Для UI, debug и tooltip можно получить snapshot полного расчёта:
 
 ```csharp
 if(stats.TryGetBreakdown(CharacterStat.Attack, out var breakdown))
-    StatBreakdownPrinter.Print(breakdown);
+{
+    // breakdown.BaseValue
+    // breakdown.AddSources
+    // breakdown.Components
+    // breakdown.Value
+}
 ```
 
-Пример вывода:
+Snapshot хранит значения sources на момент расчёта, поэтому динамический source не перечитывается позже при отображении.
+
+Пример форматированного вывода:
 
 ```text
 Attack: 56.7
 
-Base
-  Character                    +10
-  Longsword                     +5
-  Total                         15
+Base: 15
+  Character                     +10
+  Longsword                      +5
 
-[Burger] x4.5
-  Burger Sauce                 +50%
-  Hamburger                      x3
+Burger: x4.5
+  Burger Sauce                  +50%
+  Hamburger                       x3
 
-[Curse] x0.7
-  Cursed Ring                  -30%
+Curse: x0.7
+  Cursed Ring                   -30%
 
-[Equipment] x1.2
-  Sword Mastery                +20%
+Equipment: x1.2
+  Sword Mastery                 +20%
 
 Result: 56.7
 ```
 
-Полный пример находится в папке `Example`.
+Для `Base` выводится абсолютное базовое значение без `x`, а компоненты выводятся как итоговые множители.
+
+## Example
+
+Полный пример находится в папке `Example`. Он показывает Equipment, Curse, Burger, красивый breakdown и зависимость `MoveSpeed` от `Agility`.

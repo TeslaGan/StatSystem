@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
     public sealed class StatBreakdown<TStat, TComponent>
     {
@@ -10,12 +10,7 @@ namespace StatSystem
         public IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> AddSources { get; }
         public IReadOnlyList<StatComponentSnapshot<TStat, TComponent>> Components { get; }
 
-        internal StatBreakdown(
-            TStat stat,
-            float baseValue,
-            float value,
-            IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> addSources,
-            IReadOnlyList<StatComponentSnapshot<TStat, TComponent>> components)
+        internal StatBreakdown(TStat stat, float baseValue, float value, IReadOnlyList<StatSourceSnapshot<TStat, TComponent>> addSources, IReadOnlyList<StatComponentSnapshot<TStat, TComponent>> components)
         {
             Stat = stat;
             BaseValue = baseValue;

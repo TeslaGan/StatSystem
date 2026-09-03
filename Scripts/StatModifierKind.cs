@@ -1,4 +1,4 @@
-namespace StatSystem
+namespace Core.StatSystem
 {
     public enum StatModifierKind
     {

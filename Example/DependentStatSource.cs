@@ -1,4 +1,4 @@
-using StatSystem;
+using Core.StatSystem;
 
 namespace Example
 {
@@ -8,19 +8,7 @@ namespace Example
         private readonly CharacterStat _dependency;
         private readonly float _modifier;
 
-        public string Name { get; }
-
-        public override CharacterStat Stat { get; }
-        public override CharacterStatComponent Component => default;
-        public override StatModifierKind Kind => StatModifierKind.Add;
-        public override float Value => _stats.GetValue(_dependency) * _modifier;
-
-        public DependentStatSource(
-            string name,
-            CharacterStat stat,
-            CharacterStat dependency,
-            float modifier,
-            IStatContainer<CharacterStat> stats)
+        public DependentStatSource(string name, CharacterStat stat, CharacterStat dependency, float modifier, IStatContainer<CharacterStat> stats)
         {
             Name = name;
             Stat = stat;
@@ -28,6 +16,12 @@ namespace Example
             _modifier = modifier;
             _stats = stats;
         }
+
+        public string Name { get; }
+        public override CharacterStat Stat { get; }
+        public override CharacterStatComponent Component => default;
+        public override StatModifierKind Kind => StatModifierKind.Add;
+        public override float Value => _stats.GetValue(_dependency) * _modifier;
 
         public override string ToString()
         {

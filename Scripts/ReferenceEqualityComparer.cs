@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace StatSystem
+namespace Core.StatSystem
 {
-    internal sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T>
-        where T : class
+    internal sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T> where T : class
     {
         public static ReferenceEqualityComparer<T> Instance { get; } = new();
 
